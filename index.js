@@ -1,105 +1,82 @@
-import makeWASocket, {
+const {
+  default: makeWASocket,
   useMultiFileAuthState,
-  DisconnectReason,
-  fetchLatestBaileysVersion
-} from "@whiskeysockets/baileys"
+  fetchLatestBaileysVersion,
+  makeCacheableSignalKeyStore
+} = require("@whiskeysockets/baileys");
 
-import express from "express"
-import P from "pino"
-
-const app = express()
-const PORT = process.env.PORT || 3000
-
-// ====== BOT SETTINGS ======
-const BOT_NAME = "JB PAPA 71"
-const OWNER_NAME = "JB"
-const OWNER_NUMBER = "919216743648" // country code ছাড়া শুধু নাম্বার লিখবে
-const PREFIX = "."
-// ===========================
-
-app.get("/", (req, res) => {
-  res.send("JB PAPA 71 Bot is Running 🚀")
-})
-
-app.listen(PORT, () => console.log("Server running on port", PORT))
+const pino = require("pino");
+const fs = require("fs");
 
 async function startBot() {
-  const { state, saveCreds } = await useMultiFileAuthState("auth")
+  const { state, saveCreds } = await useMultiFileAuthState("./session");
 
-  const { version } = await fetchLatestBaileysVersion()
+  const { version } = await fetchLatestBaileysVersion();
 
   const sock = makeWASocket({
     version,
-    logger: P({ level: "silent" }),
+    logger: pino({ level: "silent" }),
     auth: state,
-    browser: ["JB PAPA 71", "Chrome", "1.0"]
-  })
+    browser: ["JB-PAPA-71", "Chrome", "1.0"]
+  });
 
-  sock.ev.on("creds.update", saveCreds)
-
-  // Pair Code System
+  // 🔐 Pair System
   if (!sock.authState.creds.registered) {
-    const number = OWNER_NUMBER
-    const code = await sock.requestPairingCode(number)
-    console.log("Your Pair Code:", code)
+    const number = "91XXXXXXXXXX"; // এখানে নিজের নাম্বার দাও
+    const code = await sock.requestPairingCode(number);
+    console.log("🔥 YOUR PAIR CODE:", code);
   }
 
-  sock.ev.on("messages.upsert", async ({ messages }) => {
-    const msg = messages[0]
-    if (!msg.message) return
+  sock.ev.on("creds.update", saveCreds);
 
+  // 📩 Message System
+  sock.ev.on("messages.upsert", async (msg) => {
+    const m = msg.messages[0];
+    if (!m.message) return;
+
+    const from = m.key.remoteJid;
     const text =
-      msg.message.conversation ||
-      msg.message.extendedTextMessage?.text
+      m.message.conversation ||
+      m.message.extendedTextMessage?.text ||
+      "";
 
-    if (!text.startsWith(PREFIX)) return
-
-    const from = msg.key.remoteJid
-    const command = text.slice(1).split(" ")[0].toLowerCase()
-    const args = text.split(" ").slice(1)
-
-    // ===== COMMANDS =====
-
-    if (command === "ping") {
-      await sock.sendMessage(from, { text: "🏓 Pong!" })
-    }
-
-    if (command === "owner") {
+    // 📌 MENU COMMAND
+    if (text.toLowerCase() === ".menu") {
       await sock.sendMessage(from, {
-        text: `👑 Owner: ${OWNER_NAME}`
-      })
+        image: { url: "https://files.catbox.moe/5ognk5.png" }, // নিজের ছবি লিংক দাও
+        caption: `👑 JB PAPA 71 ☠️ BOT MENU
+
+📌 Available Commands:
+
+.menu - Show Menu
+.ping - Check Bot
+.channel - WhatsApp Channel
+
+🔥 Owner: JB PAPA 71`
+      });
     }
 
-    if (command === "tagall") {
-      const group = await sock.groupMetadata(from)
-      const participants = group.participants
-      let teks = "📢 Tagging All:\n\n"
-      participants.forEach(p => {
-        teks += `@${p.id.split("@")[0]}\n`
-      })
+    // 📌 CHANNEL BUTTON
+    if (text.toLowerCase() === "https://whatsapp.com/channel/0029Vb69yTi5PO0rX16dFQ1L") {
       await sock.sendMessage(from, {
-        text: teks,
-        mentions: participants.map(p => p.id)
-      })
+        text: "📢 Join Our Official WhatsApp Channel 👇",
+        footer: "JB PAPA 71",
+        buttons: [
+          {
+            buttonId: "channel",
+            buttonText: { displayText: "📢 Join Channel" },
+            type: 1
+          }
+        ],
+        headerType: 1
+      });
     }
 
-    if (command === "welcome") {
-      await sock.sendMessage(from, {
-        text: "👋 Welcome to JB PAPA 71 Group!"
-      })
+    // 📌 PING
+    if (text.toLowerCase() === ".ping") {
+      await sock.sendMessage(from, { text: "🏓 Pong! Bot is Alive 🔥" });
     }
-  })
-
-  sock.ev.on("connection.update", ({ connection, lastDisconnect }) => {
-    if (connection === "close") {
-      const shouldReconnect =
-        lastDisconnect.error?.output?.statusCode !==
-        DisconnectReason.loggedOut
-      if (shouldReconnect) startBot()
-    } else if (connection === "open") {
-      console.log("✅ JB PAPA 71 Connected Successfully!")
-    }
-  })
+  });
 }
 
-startBot()
+startBot();
