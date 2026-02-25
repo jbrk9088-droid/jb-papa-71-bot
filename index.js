@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000
 // ====== BOT SETTINGS ======
 const BOT_NAME = "JB PAPA 71"
 const OWNER_NAME = "JB"
-const OWNER_NUMBER = "YOUR_NUMBER_HERE" // country code ছাড়া শুধু নাম্বার লিখবে
+const OWNER_NUMBER = "919216743648" // country code ছাড়া শুধু নাম্বার লিখবে
 const PREFIX = "."
 // ===========================
 
